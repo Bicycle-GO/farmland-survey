@@ -1,0 +1,29 @@
+name: Publish HWPX delivery asset
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/publish_hwpx_release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish direct-download HWPX asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILE="hwpx-report/output/도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx"
+          test -s "$FILE"
+          if gh release view hwpx-report-20260901 >/dev/null 2>&1; then
+            gh release upload hwpx-report-20260901 "$FILE" --clobber
+          else
+            gh release create hwpx-report-20260901 "$FILE" \
+              --title "도로대장 통합관리체계 상세설계 고도화 분석·검토 보고" \
+              --notes "국토교통부 주요업무 추진계획형 보고 구성으로 작성하고 HWPX 구조검증을 완료한 편집 가능 문서입니다."
+          fi
