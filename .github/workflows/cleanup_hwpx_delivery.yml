@@ -1,0 +1,36 @@
+name: Clean temporary HWPX delivery files
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/cleanup_hwpx_delivery.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Remove temporary release and repository delivery files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete hwpx-report-20260901 --cleanup-tag --yes || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f \
+            .github/workflows/build_hwpx_report.yml \
+            .github/workflows/publish_hwpx_release.yml \
+            .github/workflows/publish_hwpx_text_route.yml \
+            .github/workflows/artifact_as_hwpx.yml \
+            .github/workflows/cleanup_hwpx_delivery.yml \
+            hwpx-report/road_register_plan_review.md \
+            hwpx-report/output/road_register_report_binary.txt \
+            "hwpx-report/output/도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx" || true
+          git commit -m "chore: remove temporary HWPX delivery files"
+          git push
