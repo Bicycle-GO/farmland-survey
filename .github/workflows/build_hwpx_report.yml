@@ -8,7 +8,7 @@ on:
       - ".github/workflows/build_hwpx_report.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -39,20 +39,17 @@ jobs:
           dst.parent.mkdir(parents=True, exist_ok=True)
           text = src.read_text(encoding="utf-8")
 
-          # Remove YAML front matter used only as drafting metadata.
           if text.startswith("---\n"):
               end = text.find("\n---\n", 4)
               if end >= 0:
                   text = text[end + 5:]
 
-          # Remove horizontal rules and unsupported emphasis markers.
           text = "\n".join(
               line for line in text.splitlines()
               if line.strip() != "---"
           )
           text = text.replace("++", "")
 
-          # Add a compact government-report cover block.
           title = "도로대장 통합관리체계 상세설계 고도화\n사업수행계획서 분석·검토 보고"
           text = re.sub(
               r"^#\s+도로대장 통합관리체계 상세설계 고도화 사업수행계획서 분석·검토 보고\s*",
@@ -80,8 +77,6 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
           from lxml import etree
-          import html
-          import re
           import tempfile
           import os
 
@@ -126,7 +121,6 @@ jobs:
           os.close(fd)
           try:
               with ZipFile(tmpname, "w", ZIP_DEFLATED) as zout:
-                  # HWPX requires mimetype to be the first entry and uncompressed.
                   mime = next((x for x in updated if x[0].filename == "mimetype"), None)
                   if mime:
                       zout.writestr(mime[0], mime[1], compress_type=ZIP_STORED)
@@ -148,6 +142,17 @@ jobs:
           python .hwpx-skill/scripts/text_extract.py "build/output/도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx" > build/output/검증용_추출텍스트.txt
           test -s "build/output/도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx"
           test -s build/output/검증용_추출텍스트.txt
+
+      - name: Publish generated HWPX for transfer
+        run: |
+          mkdir -p hwpx-report/output
+          cp "build/output/도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx" \
+             "hwpx-report/output/도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hwpx-report/output/
+          git diff --cached --quiet || git commit -m "build: generate validated HWPX report"
+          git push
 
       - name: Upload generated report
         uses: actions/upload-artifact@v4
