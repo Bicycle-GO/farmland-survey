@@ -7,28 +7,50 @@ on:
       - '.github/workflows/build-hwpx-report.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare HWPX skill
         run: |
           git clone --depth 1 https://github.com/jkf87/hwpx-skill.git /tmp/hwpx-skill
           python -m pip install --upgrade pip
           pip install python-hwpx lxml
+
       - name: Analyze public-sector reference template
         run: |
           python /tmp/hwpx-skill/scripts/doc_spec.py analyze /tmp/hwpx-skill/assets/gyehoek-reference.hwpx -o /tmp/spec
+
       - name: Render HWPX
         run: |
           python /tmp/hwpx-skill/scripts/doc_spec.py render /tmp/spec hwpx-report/road_register_plan_review.md -o '도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx'
+
       - name: Validate HWPX
         run: |
-          python /tmp/hwpx-skill/scripts/validate.py '도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx' --strict
+          python /tmp/hwpx-skill/scripts/validate.py '도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx' --layout
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: road-register-hwpx-report
           path: '도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx'
           if-no-files-found: error
+
+      - name: Publish direct-download HWPX
+        run: |
+          mkdir -p hwpx-report/output
+          cp '도로대장_통합관리체계_상세설계_고도화_사업수행계획서_분석검토보고.hwpx' 'hwpx-report/output/road_register_plan_review.hwpx'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hwpx-report/output/road_register_plan_review.hwpx
+          if git diff --cached --quiet; then
+            echo 'No output change to commit.'
+          else
+            git commit -m 'build: publish regenerated HWPX report'
+            git push
+          fi
